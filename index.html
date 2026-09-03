@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realmora</title>
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --panel: #ffffff;
+    --panel-border: #e9edef;
+    --text: #111b21;
+    --text-dim: #667781;
+    --accent: #00a884;
+    --accent-dark: #008069;
+    --bubble-me: #d9fdd3;
+    --bubble-them: #ffffff;
+    --hover: #f5f6f6;
+    --active: #e9edef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b141a;
+      --panel: #111b21;
+      --panel-border: #222d34;
+      --text: #e9edef;
+      --text-dim: #8696a0;
+      --accent: #00a884;
+      --accent-dark: #06cf9c;
+      --bubble-me: #005c4b;
+      --bubble-them: #202c33;
+      --hover: #202c33;
+      --active: #2a3942;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b141a; --panel: #111b21; --panel-border: #222d34; --text: #e9edef;
+    --text-dim: #8696a0; --bubble-me: #005c4b; --bubble-them: #202c33;
+    --hover: #202c33; --active: #2a3942;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100vh; overflow: hidden;
+  }
+  #app {
+    display: flex; height: 100vh; max-width: 1600px; margin: 0 auto;
+    background: var(--panel);
+  }
+
+  /* ---------- left panel ---------- */
+  #sidebar {
+    width: 380px; min-width: 280px; flex-shrink: 0;
+    border-right: 1px solid var(--panel-border);
+    display: flex; flex-direction: column;
+  }
+  #sidebar-header {
+    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  #sidebar-header h1 { font-size: 17px; font-weight: 600; }
+  #token-status { font-size: 11px; color: var(--text-dim); cursor: pointer; }
+  #token-status.connected { color: var(--accent); }
+  #contact-list { flex: 1; overflow-y: auto; }
+  .contact {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    cursor: pointer; border-bottom: 1px solid var(--panel-border);
+  }
+  .contact:hover { background: var(--hover); }
+  .contact.active { background: var(--active); }
+  .avatar {
+    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 600; font-size: 18px;
+  }
+  .contact-info { flex: 1; min-width: 0; }
+  .contact-name { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .contact-tag {
+    font-size: 10px; padding: 1px 6px; border-radius: 8px;
+    background: var(--active); color: var(--text-dim); font-weight: 600;
+  }
+  .contact-preview {
+    font-size: 13px; color: var(--text-dim); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
+  }
+  .contact-meta { font-size: 11px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  /* ---------- right panel ---------- */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #chat-header {
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  #chat-header .name { font-weight: 600; font-size: 15px; }
+  #chat-header .status { font-size: 12px; color: var(--text-dim); }
+  #messages {
+    flex: 1; overflow-y: auto; padding: 20px 8%;
+    display: flex; flex-direction: column; gap: 2px;
+    background-image: radial-gradient(var(--panel-border) 0.5px, transparent 0.5px);
+    background-size: 16px 16px;
+  }
+  .msg-row { display: flex; margin: 3px 0; }
+  .msg-row.me { justify-content: flex-end; }
+  .bubble {
+    max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14.5px;
+    line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
+  }
+  .msg-row.them .bubble { background: var(--bubble-them); border-top-left-radius: 2px; }
+  .msg-row.me .bubble { background: var(--bubble-me); border-top-right-radius: 2px; }
+  .bubble .time {
+    font-size: 10px; color: var(--text-dim); text-align: right;
+    margin-top: 4px; margin-left: 12px; float: right;
+  }
+  .bubble.pending { opacity: 0.6; }
+  .bubble.error { background: #f8d7da; color: #842029; }
+
+  #composer {
+    display: flex; align-items: flex-end; gap: 10px;
+    padding: 12px 16px; border-top: 1px solid var(--panel-border);
+  }
+  #composer textarea {
+    flex: 1; resize: none; border: none; outline: none;
+    background: var(--hover); color: var(--text);
+    border-radius: 20px; padding: 10px 16px; font-size: 14.5px;
+    font-family: inherit; max-height: 120px; line-height: 1.4;
+  }
+  #send-btn {
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  #send-btn:disabled { opacity: 0.4; cursor: default; }
+  #send-btn svg { width: 20px; height: 20px; }
+
+  #empty-state {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); font-size: 14px; text-align: center; flex-direction: column; gap: 8px;
+  }
+
+  /* token modal */
+  #token-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: none; align-items: center; justify-content: center; z-index: 10;
+  }
+  #token-modal.open { display: flex; }
+  #token-modal .box {
+    background: var(--panel); padding: 24px; border-radius: 8px; width: 380px;
+    max-width: 90vw;
+  }
+  #token-modal h2 { font-size: 16px; margin-bottom: 8px; }
+  #token-modal p { font-size: 13px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.5; }
+  #token-modal input {
+    width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--panel-border);
+    background: var(--hover); color: var(--text); font-size: 13px; margin-bottom: 12px;
+  }
+  #token-modal button {
+    width: 100%; padding: 10px; border-radius: 6px; border: none;
+    background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>Realmora</h1>
+      <div id="token-status" onclick="openTokenModal()">not connected</div>
+    </div>
+    <div id="contact-list">
+      <div class="contact active" onclick="selectContact('jarvis')">
+        <div class="avatar">J</div>
+        <div class="contact-info">
+          <div class="contact-name">Jarvis <span class="contact-tag">$~jarvis</span></div>
+          <div class="contact-preview" id="jarvis-preview">Say hello</div>
+        </div>
+        <div class="contact-meta"><span class="dot" id="jarvis-dot" style="display:none"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="chat-header">
+      <div class="avatar" style="width:36px;height:36px;font-size:14px;">J</div>
+      <div>
+        <div class="name">Jarvis</div>
+        <div class="status" id="chat-status">$~jarvis</div>
+      </div>
+    </div>
+    <div id="messages"></div>
+    <div id="composer">
+      <textarea id="input" placeholder="Message Jarvis" rows="1" onkeydown="onKeyDown(event)" oninput="autoGrow(this)"></textarea>
+      <button id="send-btn" onclick="send()" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="token-modal">
+  <div class="box">
+    <h2>Connect to Jarvis</h2>
+    <p>Paste the identity token issued for this browser. It's stored only in this
+       browser's local storage and sent as a Bearer token on every message.</p>
+    <input id="token-input" type="password" placeholder="Bearer token" autocomplete="off">
+    <button onclick="saveToken()">Connect</button>
+  </div>
+</div>
+
+<script>
+const API_BASE = "https://jarvis.harithkavish.com";
+const SESSION_KEY = "realmora_session_id";
+const TOKEN_KEY = "realmora_token";
+const HISTORY_KEY = "realmora_history_jarvis";
+
+let sessionId = localStorage.getItem(SESSION_KEY) || crypto.randomUUID();
+localStorage.setItem(SESSION_KEY, sessionId);
+
+const $messages = document.getElementById("messages");
+const $input = document.getElementById("input");
+const $sendBtn = document.getElementById("send-btn");
+const $tokenStatus = document.getElementById("token-status");
+const $jarvisDot = document.getElementById("jarvis-dot");
+const $jarvisPreview = document.getElementById("jarvis-preview");
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
+
+function openTokenModal() {
+  document.getElementById("token-modal").classList.add("open");
+  document.getElementById("token-input").value = getToken();
+}
+function saveToken() {
+  const v = document.getElementById("token-input").value.trim();
+  if (!v) return;
+  localStorage.setItem(TOKEN_KEY, v);
+  document.getElementById("token-modal").classList.remove("open");
+  refreshStatus();
+}
+
+async function refreshStatus() {
+  const has = !!getToken();
+  $tokenStatus.textContent = has ? "connected" : "not connected";
+  $tokenStatus.classList.toggle("connected", has);
+  $jarvisDot.style.display = has ? "inline-block" : "none";
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveHistory(msgs) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs.slice(-200)));
+}
+
+let history = loadHistory();
+
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function renderAll() {
+  $messages.innerHTML = "";
+  if (!history.length) {
+    $messages.innerHTML = '<div id="empty-state"><div>No messages yet</div><div>Say hello to Jarvis</div></div>';
+    return;
+  }
+  for (const m of history) appendBubble(m, false);
+  $messages.scrollTop = $messages.scrollHeight;
+  const last = history[history.length - 1];
+  if (last) $jarvisPreview.textContent = (last.role === "user" ? "You: " : "") + last.content.slice(0, 40);
+}
+
+function appendBubble(m, scroll = true) {
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.remove();
+  const row = document.createElement("div");
+  row.className = "msg-row " + (m.role === "user" ? "me" : "them");
+  row.dataset.id = m.id;
+  const bubble = document.createElement("div");
+  bubble.className = "bubble" + (m.pending ? " pending" : "") + (m.error ? " error" : "");
+  bubble.textContent = m.content;
+  const time = document.createElement("span");
+  time.className = "time";
+  time.textContent = fmtTime(m.ts);
+  bubble.appendChild(time);
+  row.appendChild(bubble);
+  $messages.appendChild(row);
+  if (scroll) $messages.scrollTop = $messages.scrollHeight;
+}
+
+function updateBubble(id, patch) {
+  const row = $messages.querySelector('[data-id="' + id + '"]');
+  if (!row) return;
+  const bubble = row.querySelector(".bubble");
+  Object.assign(patch.style ? {} : {}, {});
+  if (patch.content !== undefined) {
+    bubble.firstChild ? bubble.replaceChild(document.createTextNode(patch.content), bubble.firstChild)
+                       : bubble.prepend(document.createTextNode(patch.content));
+  }
+  bubble.classList.toggle("pending", !!patch.pending);
+  bubble.classList.toggle("error", !!patch.error);
+}
+
+function autoGrow(el) {
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 120) + "px";
+}
+
+function onKeyDown(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+}
+
+async function send() {
+  const text = $input.value.trim();
+  if (!text) return;
+  if (!getToken()) { openTokenModal(); return; }
+
+  $input.value = "";
+  autoGrow($input);
+  $sendBtn.disabled = true;
+
+  const userMsg = { id: crypto.randomUUID(), role: "user", content: text, ts: Date.now() };
+  history.push(userMsg);
+  appendBubble(userMsg);
+  saveHistory(history);
+
+  const pendingId = crypto.randomUUID();
+  const pendingMsg = { id: pendingId, role: "assistant", content: "…", ts: Date.now(), pending: true };
+  history.push(pendingMsg);
+  appendBubble(pendingMsg);
+
+  try {
+    const res = await fetch(API_BASE + "/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + getToken(),
+        "X-Hermes-Session-Id": sessionId,
+      },
+      body: JSON.stringify({
+        model: "chat",
+        messages: [{ role: "user", content: text }],
+      }),
+    });
+
+    if (res.status === 401) {
+      updateBubble(pendingId, { content: "Invalid or expired token. Click the status label to reconnect.", error: true, pending: false });
+      history[history.length - 1] = { id: pendingId, role: "assistant", content: "Invalid or expired token.", ts: Date.now(), error: true };
+      localStorage.removeItem(TOKEN_KEY);
+      refreshStatus();
+      saveHistory(history);
+      return;
+    }
+    if (res.status === 429) {
+      const body = await res.json().catch(() => ({}));
+      const msg = "Rate limited: " + (body.error && body.error.message || "try again shortly");
+      updateBubble(pendingId, { content: msg, error: true, pending: false });
+      history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
+      saveHistory(history);
+      return;
+    }
+    if (!res.ok) {
+      const msg = "Error " + res.status + " reaching Jarvis.";
+      updateBubble(pendingId, { content: msg, error: true, pending: false });
+      history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
+      saveHistory(history);
+      return;
+    }
+
+    const data = await res.json();
+    const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "(empty reply)";
+    updateBubble(pendingId, { content: reply, pending: false });
+    history[history.length - 1] = { id: pendingId, role: "assistant", content: reply, ts: Date.now() };
+    saveHistory(history);
+    $jarvisPreview.textContent = reply.slice(0, 40);
+  } catch (err) {
+    const msg = "Network error: " + err.message;
+    updateBubble(pendingId, { content: msg, error: true, pending: false });
+    history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
+    saveHistory(history);
+  } finally {
+    $sendBtn.disabled = false;
+    $input.focus();
+  }
+}
+
+function selectContact() { /* single contact for now */ }
+
+refreshStatus();
+renderAll();
+if (!getToken()) setTimeout(openTokenModal, 300);
+</script>
+</body>
+</html>
