@@ -255,7 +255,8 @@
 <script>
 const API_BASE = "https://jarvis.harithkavish.com";
 const SESSION_KEY = "realmora_session_id";
-const TOKEN_KEY = "realmora_token";
+const TOKEN_KEY = "realmora_token";                 // legacy per-origin localStorage key
+const SHARED_TOKEN_KEY = "realmora.api_token";      // HarithStore key, namespaced app-prefixed
 const HISTORY_KEY = "realmora_history_jarvis";
 
 let sessionId = localStorage.getItem(SESSION_KEY) || crypto.randomUUID();
@@ -268,7 +269,57 @@ const $tokenStatus = document.getElementById("token-status");
 const $jarvisDot = document.getElementById("jarvis-dot");
 const $jarvisPreview = document.getElementById("jarvis-preview");
 
-function getToken() { return localStorage.getItem(TOKEN_KEY) || ""; }
+// Storage for the API token: HarithStore is preferred (cookie-scoped to
+// .harithkavish.com, survives more than raw localStorage, and consistent
+// with how the rest of the ecosystem persists per-visitor state) with
+// localStorage as the unconditional fallback -- every call is wrapped so a
+// wrong assumption about HarithStore's exact API degrades silently to the
+// path that is already known to work, rather than breaking the page.
+function hasHarithStore() {
+  return typeof window.HarithStore === "object" && window.HarithStore
+    && typeof HarithStore.get === "function" && typeof HarithStore.set === "function";
+}
+
+// One-time adoption of a token saved before this change existed (this
+// browser, this exact origin) into the shared, cross-subdomain store.
+(function migrateLegacyToken() {
+  try {
+    if (hasHarithStore() && typeof HarithStore.migrate === "function") {
+      HarithStore.migrate(SHARED_TOKEN_KEY, TOKEN_KEY);
+      return;
+    }
+  } catch (e) { /* fall through to manual migration below */ }
+  try {
+    const legacy = localStorage.getItem(TOKEN_KEY);
+    if (legacy && hasHarithStore() && !HarithStore.get(SHARED_TOKEN_KEY)) {
+      HarithStore.set(SHARED_TOKEN_KEY, legacy);
+    }
+  } catch (e) { /* HarithStore unavailable or behaves unexpectedly -- fine, localStorage still works */ }
+})();
+
+function getToken() {
+  try {
+    if (hasHarithStore()) {
+      const v = HarithStore.get(SHARED_TOKEN_KEY);
+      if (v) return v;
+    }
+  } catch (e) { /* fall through to localStorage */ }
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+function setToken(v) {
+  localStorage.setItem(TOKEN_KEY, v);   // guaranteed to work regardless of HarithStore
+  try {
+    if (hasHarithStore()) HarithStore.set(SHARED_TOKEN_KEY, v);
+  } catch (e) { /* localStorage write above already succeeded */ }
+}
+
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  try {
+    if (hasHarithStore() && typeof HarithStore.remove === "function") HarithStore.remove(SHARED_TOKEN_KEY);
+  } catch (e) { /* localStorage clear above already succeeded */ }
+}
 
 function openTokenModal() {
   document.getElementById("token-modal").classList.add("open");
@@ -277,7 +328,7 @@ function openTokenModal() {
 function saveToken() {
   const v = document.getElementById("token-input").value.trim();
   if (!v) return;
-  localStorage.setItem(TOKEN_KEY, v);
+  setToken(v);
   document.getElementById("token-modal").classList.remove("open");
   refreshStatus();
 }
@@ -395,7 +446,7 @@ async function send() {
       const invalidMsg = "API token invalid or revoked. Click \"api: not linked\" to re-link.";
       updateBubble(pendingId, { content: invalidMsg, error: true, pending: false });
       history[history.length - 1] = { id: pendingId, role: "assistant", content: invalidMsg, ts: Date.now(), error: true };
-      localStorage.removeItem(TOKEN_KEY);
+      clearToken();
       refreshStatus();
       saveHistory(history);
       return;
