@@ -596,6 +596,41 @@ function goBack() {
 refreshStatus();
 renderAll();
 if (!getToken()) setTimeout(openTokenModal, 300);
+
+// Temporary on-page diagnostic for the mobile composer report -- shows the
+// real computed values from whatever device loads this, since headless
+// Chrome (used for all prior testing) has no real address bar or on-screen
+// keyboard to reproduce either against. Visit ?debug=1 to see it; does
+// nothing on a normal visit. Safe to delete once the report is resolved.
+if (location.search.indexOf("debug=1") !== -1) {
+  const $dbg = document.createElement("div");
+  $dbg.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;"
+    + "background:rgba(200,0,0,.92);color:#fff;font:11px/1.5 monospace;"
+    + "padding:6px 8px;white-space:pre-wrap;pointer-events:none;max-height:45vh;overflow:auto;";
+  document.body.appendChild($dbg);
+
+  function updateDebug() {
+    const header = document.querySelector("harith-header .site-header") || document.querySelector("harith-header");
+    const rects = {};
+    ["app", "sidebar", "main", "chat-header", "messages", "composer", "input", "send-btn"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { const r = el.getBoundingClientRect(); rects[id] = `${Math.round(r.top)},${Math.round(r.bottom)} h=${Math.round(r.height)}`; }
+    });
+    $dbg.textContent =
+      `UA: ${navigator.userAgent.slice(0,60)}\n` +
+      `innerW/H: ${window.innerWidth}x${window.innerHeight}  dpr:${window.devicePixelRatio}\n` +
+      `vv: ${window.visualViewport ? window.visualViewport.width+"x"+window.visualViewport.height : "unsupported"}\n` +
+      `--app-vh: ${getComputedStyle(document.documentElement).getPropertyValue("--app-vh")}\n` +
+      `body computed H: ${getComputedStyle(document.body).height}\n` +
+      `header rendered H: ${header ? Math.round(header.getBoundingClientRect().height) : "n/a"}\n` +
+      `#app class: [${$app.className}]\n` +
+      Object.entries(rects).map(([k,v]) => `#${k}: top,bottom=${v}`).join("\n");
+  }
+  updateDebug();
+  window.addEventListener("resize", updateDebug);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", updateDebug);
+  setInterval(updateDebug, 1000);
+}
 </script>
 </body>
 </html>
