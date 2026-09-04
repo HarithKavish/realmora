@@ -409,6 +409,50 @@ function onKeyDown(e) {
   }
 }
 
+// Reads an OpenAI-style SSE stream (data: {...}\n\n lines, terminated by
+// "data: [DONE]") and grows the given bubble's text as each delta arrives,
+// instead of waiting for the full reply. Returns the fully accumulated text.
+async function streamReply(res, bubbleId) {
+  if (!res.body || !res.body.getReader) {
+    // Streaming unsupported in this browser/response -- fall back to a
+    // single non-incremental read rather than failing outright.
+    const data = await res.json();
+    return (data.choices && data.choices[0] && data.choices[0].message
+            && data.choices[0].message.content) || "";
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+  let accumulated = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffered += decoder.decode(value, { stream: true });
+
+    const lines = buffered.split("\n");
+    buffered = lines.pop(); // last element may be a partial line -- keep for next read
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const payload = trimmed.slice(5).trim();
+      if (!payload || payload === "[DONE]") continue;
+
+      let chunk;
+      try { chunk = JSON.parse(payload); } catch { continue; }
+      const delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+      if (delta && delta.content) {
+        accumulated += delta.content;
+        updateBubble(bubbleId, { content: accumulated, pending: true });
+        $messages.scrollTop = $messages.scrollHeight;
+      }
+    }
+  }
+  return accumulated;
+}
+
 async function send() {
   const text = $input.value.trim();
   if (!text) return;
@@ -439,6 +483,7 @@ async function send() {
       body: JSON.stringify({
         model: "chat",
         messages: [{ role: "user", content: text }],
+        stream: true,
       }),
     });
 
@@ -467,12 +512,11 @@ async function send() {
       return;
     }
 
-    const data = await res.json();
-    const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "(empty reply)";
-    updateBubble(pendingId, { content: reply, pending: false });
-    history[history.length - 1] = { id: pendingId, role: "assistant", content: reply, ts: Date.now() };
+    const reply = await streamReply(res, pendingId);
+    updateBubble(pendingId, { content: reply || "(empty reply)", pending: false });
+    history[history.length - 1] = { id: pendingId, role: "assistant", content: reply || "(empty reply)", ts: Date.now() };
     saveHistory(history);
-    $jarvisPreview.textContent = reply.slice(0, 40);
+    $jarvisPreview.textContent = (reply || "(empty reply)").slice(0, 40);
   } catch (err) {
     const msg = "Network error: " + err.message;
     updateBubble(pendingId, { content: msg, error: true, pending: false });
