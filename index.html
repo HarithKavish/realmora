@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Realmora</title>
 
 <!-- HarithKavish shared design system. Cache-bust value must match the
@@ -16,183 +16,188 @@
 <link rel="stylesheet" href="https://harithkavish.com/design-system/v1.0.0/utils.css?v=20260829.8">
 
 <style>
-  /* Chat-UI-specific styling, namespaced --rm- so nothing here can collide
-     with or silently override a shared design-system token of the same
-     name (see the account/globals.css cascade trap in the design-system
-     notes: a locally-redeclared name wins at equal specificity by source
-     order, and the shared variant loses without ever erroring).
-     Theme (light/dark) is owned by the shared theme-toggle.js -- these are
-     read, not redefined, so switching identity themes anywhere in the
-     ecosystem switches Realmora too. Values here are fallbacks only, for
-     the moment before theme-toggle.js has run. */
-  :root {
-    --rm-bg: var(--surface-1, #f0f2f5);
-    --rm-panel: var(--surface-0, #ffffff);
-    --rm-border: var(--border, #e9edef);
-    --rm-text: var(--text-1, #111b21);
-    --rm-text-dim: var(--text-2, #667781);
-    --rm-accent: var(--primary, #00a884);
-    --rm-accent-dark: var(--primary-dark, #008069);
-    --rm-bubble-me: #d9fdd3;
-    --rm-bubble-them: var(--surface-0, #ffffff);
-    --rm-hover: var(--surface-2, #f5f6f6);
-    --rm-active: var(--surface-3, #e9edef);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --rm-bg: var(--surface-1, #0b141a);
-      --rm-panel: var(--surface-0, #111b21);
-      --rm-border: var(--border, #222d34);
-      --rm-text: var(--text-1, #e9edef);
-      --rm-text-dim: var(--text-2, #8696a0);
-      --rm-bubble-me: #005c4b;
-      --rm-bubble-them: var(--surface-0, #202c33);
-      --rm-hover: var(--surface-2, #202c33);
-      --rm-active: var(--surface-3, #2a3942);
-    }
-  }
-  :root[data-theme="dark"] {
-    --rm-bg: var(--surface-1, #0b141a);
-    --rm-panel: var(--surface-0, #111b21);
-    --rm-border: var(--border, #222d34);
-    --rm-text: var(--text-1, #e9edef);
-    --rm-text-dim: var(--text-2, #8696a0);
-    --rm-bubble-me: #005c4b;
-    --rm-bubble-them: var(--surface-0, #202c33);
-    --rm-hover: var(--surface-2, #202c33);
-    --rm-active: var(--surface-3, #2a3942);
-  }
+  /* This app consumes the real shared tokens directly (var(--text), --border,
+     --accent, --surface-strong, etc. -- confirmed from the live tokens.css,
+     not guessed) rather than a locally reinvented set. Theme switching is
+     entirely the shared system's job (body.dark-mode / [data-theme='dark'] /
+     prefers-color-scheme, all defined in tokens.css) -- nothing here
+     redeclares or duplicates that logic, so there is exactly one theme
+     mechanism on the page, not two that can disagree.
+
+     base.css already styles body (background, color, font, the grid
+     texture); only what a fixed-viewport chat shell needs on top of a
+     document meant for scrolling pages is added here. */
   * { box-sizing: border-box; }
-  html, body { height: 100%; }
+  html { height: 100%; }
   body {
-    background: var(--rm-bg); color: var(--rm-text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100vh;   /* fallback for browsers without dvh */
+    height: 100dvh;  /* tracks the real visible viewport as mobile browser chrome shows/hides */
     overflow: hidden;
     display: flex; flex-direction: column;
+    font-size: var(--font-size-base);
   }
+  harith-header { flex-shrink: 0; }
+
   #app {
     display: flex; flex: 1; min-height: 0; max-width: 1600px; width: 100%;
-    margin: 0 auto; background: var(--rm-panel);
+    margin: 0 auto; background: var(--surface-strong);
+    border-left: var(--border-hairline) solid var(--border);
+    border-right: var(--border-hairline) solid var(--border);
   }
 
   /* ---------- left panel ---------- */
   #sidebar {
     width: 380px; min-width: 280px; flex-shrink: 0;
-    border-right: 1px solid var(--rm-border);
+    border-right: var(--border-hairline) solid var(--border);
     display: flex; flex-direction: column;
   }
   #sidebar-header {
-    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
-    border-bottom: 1px solid var(--rm-border);
+    padding: var(--space-md); display: flex; align-items: center; justify-content: space-between;
+    border-bottom: var(--border-hairline) solid var(--border);
   }
-  #sidebar-header h1 { font-size: 17px; font-weight: 600; }
-  #token-status { font-size: 11px; color: var(--rm-text-dim); cursor: pointer; }
-  #token-status.connected { color: var(--rm-accent); }
+  #sidebar-header h1 { margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); }
   #contact-list { flex: 1; overflow-y: auto; }
   .contact {
-    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-    cursor: pointer; border-bottom: 1px solid var(--rm-border);
+    display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md);
+    cursor: pointer; border-bottom: var(--border-hairline) solid var(--border);
+    transition: var(--transition-interactive);
   }
-  .contact:hover { background: var(--rm-hover); }
-  .contact.active { background: var(--rm-active); }
+  .contact:hover { background: var(--surface-hover); }
+  .contact.active { background: var(--surface-soft); }
   .avatar {
-    width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
-    background: linear-gradient(135deg, var(--rm-accent), var(--rm-accent-dark));
+    width: 48px; height: 48px; border-radius: var(--radius-pill); flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-weight: 600; font-size: 18px;
+    color: var(--text-on-accent); font-weight: var(--font-weight-heading); font-size: var(--font-size-lg);
   }
   .contact-info { flex: 1; min-width: 0; }
-  .contact-name { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-  .contact-tag {
-    font-size: 10px; padding: 1px 6px; border-radius: 8px;
-    background: var(--rm-active); color: var(--rm-text-dim); font-weight: 600;
-  }
+  .contact-name { font-size: var(--font-size-base); font-weight: var(--font-weight-medium); display: flex; align-items: center; gap: var(--space-2xs); }
   .contact-preview {
-    font-size: 13px; color: var(--rm-text-dim); white-space: nowrap;
+    font-size: var(--font-size-sm); color: var(--muted); white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; margin-top: 2px;
   }
-  .contact-meta { font-size: 11px; color: var(--rm-text-dim); text-align: right; flex-shrink: 0; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--rm-accent); display: inline-block; }
+  .contact-meta { flex-shrink: 0; }
+  .dot { width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--dot-online); display: inline-block; }
 
   /* ---------- right panel ---------- */
   #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #chat-header {
-    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
-    border-bottom: 1px solid var(--rm-border);
+    padding: var(--space-sm) var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);
+    border-bottom: var(--border-hairline) solid var(--border);
   }
-  #chat-header .name { font-weight: 600; font-size: 15px; }
-  #chat-header .status { font-size: 12px; color: var(--rm-text-dim); }
+  #chat-header .name { font-weight: var(--font-weight-semibold); font-size: var(--font-size-base); }
+  #chat-header .status { font-size: var(--font-size-xs); color: var(--muted); }
+  #back-btn {
+    display: none; /* shown only under the mobile breakpoint below */
+    align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem;
+    border-radius: var(--radius-pill); border: none; background: transparent;
+    color: var(--text); cursor: pointer; flex-shrink: 0; padding: 0;
+    transition: var(--transition-interactive);
+  }
+  #back-btn:hover { background: var(--surface-hover); }
+  #back-btn svg { width: 1.3rem; height: 1.3rem; }
+
   #messages {
-    flex: 1; overflow-y: auto; padding: 20px 8%;
+    flex: 1; overflow-y: auto; padding: var(--space-lg) 8%;
     display: flex; flex-direction: column; gap: 2px;
-    background-image: radial-gradient(var(--rm-border) 0.5px, transparent 0.5px);
+    background-image: radial-gradient(var(--border) 0.5px, transparent 0.5px);
     background-size: 16px 16px;
   }
   .msg-row { display: flex; margin: 3px 0; }
   .msg-row.me { justify-content: flex-end; }
   .bubble {
-    max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14.5px;
-    line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;
-    box-shadow: 0 1px 0.5px rgba(0,0,0,.13);
+    max-width: 65%; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-md);
+    font-size: var(--font-size-base); line-height: var(--line-height-body);
+    white-space: pre-wrap; word-wrap: break-word; box-shadow: var(--shadow);
   }
-  .msg-row.them .bubble { background: var(--rm-bubble-them); border-top-left-radius: 2px; }
-  .msg-row.me .bubble { background: var(--rm-bubble-me); border-top-right-radius: 2px; }
+  .msg-row.them .bubble { background: var(--surface); border-top-left-radius: 2px; }
+  .msg-row.me .bubble {
+    background: var(--pill-bg); border: var(--border-hairline) solid var(--border);
+    border-top-right-radius: 2px;
+  }
   .bubble .time {
-    font-size: 10px; color: var(--rm-text-dim); text-align: right;
-    margin-top: 4px; margin-left: 12px; float: right;
+    font-size: 10px; color: var(--muted); text-align: right;
+    margin-top: 4px; margin-left: var(--space-sm); float: right;
   }
   .bubble.pending { opacity: 0.6; }
-  .bubble.error { background: #f8d7da; color: #842029; }
+  .bubble.error {
+    background: var(--status-danger-bg); color: var(--status-danger-fg);
+    border: var(--border-hairline) solid var(--status-danger-border); box-shadow: none;
+  }
 
   #composer {
-    display: flex; align-items: flex-end; gap: 10px;
-    padding: 12px 16px; border-top: 1px solid var(--rm-border);
+    display: flex; align-items: flex-end; gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md); border-top: var(--border-hairline) solid var(--border);
+    padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
   }
   #composer textarea {
-    flex: 1; resize: none; border: none; outline: none;
-    background: var(--rm-hover); color: var(--rm-text);
-    border-radius: 20px; padding: 10px 16px; font-size: 14.5px;
-    font-family: inherit; max-height: 120px; line-height: 1.4;
+    flex: 1; resize: none; border: var(--border-hairline) solid var(--border); outline: none;
+    background: var(--surface); color: var(--text);
+    border-radius: var(--radius-lg); padding: var(--space-xs) var(--space-md);
+    font: inherit;
+    font-size: 16px; /* >=16px stops iOS Safari auto-zooming on focus */
+    max-height: 120px; line-height: var(--line-height-body);
+    transition: var(--transition-interactive);
+  }
+  #composer textarea:focus-visible {
+    outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); border-color: var(--border-focus);
   }
   #send-btn {
-    width: 40px; height: 40px; border-radius: 50%; border: none;
-    background: var(--rm-accent); color: #fff; cursor: pointer;
+    width: 2.6rem; height: 2.6rem; border-radius: var(--radius-pill); border: none;
+    background: var(--accent); color: var(--text-on-accent); cursor: pointer;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: var(--transition-interactive);
   }
-  #send-btn:disabled { opacity: 0.4; cursor: default; }
-  #send-btn svg { width: 20px; height: 20px; }
+  #send-btn:hover:not(:disabled) { background: var(--accent-strong); }
+  #send-btn:disabled { opacity: 0.45; cursor: default; }
+  #send-btn svg { width: 1.2rem; height: 1.2rem; }
 
   #empty-state {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    color: var(--rm-text-dim); font-size: 14px; text-align: center; flex-direction: column; gap: 8px;
+    color: var(--muted); font-size: var(--font-size-sm); text-align: center;
+    flex-direction: column; gap: var(--space-xs);
   }
 
   /* token modal */
   #token-modal {
     position: fixed; inset: 0; background: rgba(0,0,0,.5);
-    display: none; align-items: center; justify-content: center; z-index: 10;
+    display: none; align-items: center; justify-content: center; z-index: var(--z-modal);
+    padding: var(--space-md);
   }
   #token-modal.open { display: flex; }
   #token-modal .box {
-    background: var(--rm-panel); padding: 24px; border-radius: 8px; width: 380px;
-    max-width: 90vw;
+    background: var(--surface-strong); padding: var(--space-xl); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-strong); width: 380px; max-width: 100%;
+    border: var(--border-hairline) solid var(--border);
   }
-  #token-modal h2 { font-size: 16px; margin-bottom: 8px; }
-  #token-modal p { font-size: 13px; color: var(--rm-text-dim); margin-bottom: 14px; line-height: 1.5; }
+  #token-modal h2 { margin: 0 0 var(--space-xs); font-size: var(--font-size-lg); }
+  #token-modal p {
+    font-size: var(--font-size-sm); color: var(--muted); margin: 0 0 var(--space-md);
+    line-height: var(--line-height-body);
+  }
   #token-modal input {
-    width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--rm-border);
-    background: var(--rm-hover); color: var(--rm-text); font-size: 13px; margin-bottom: 12px;
+    width: 100%; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm);
+    border: var(--border-hairline) solid var(--border); background: var(--surface);
+    color: var(--text); font-size: 16px; margin-bottom: var(--space-md);
   }
-  #token-modal button {
-    width: 100%; padding: 10px; border-radius: 6px; border: none;
-    background: var(--rm-accent); color: #fff; font-weight: 600; cursor: pointer; font-size: 14px;
+  #token-modal input:focus-visible {
+    outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); border-color: var(--border-focus);
   }
+  #token-modal .button { width: 100%; }
 
-  /* harith-header carries real ecosystem identity (avatar if signed in
-     anywhere on harithkavish.com, sign-in button if not) -- it is the ONE
-     identity surface on this page. Give it room without fighting the
-     chat layout below it. */
-  harith-header { display: block; flex-shrink: 0; }
+  /* ---------- mobile: single pane + back button, at the ecosystem's own
+     760px breakpoint (matches the shared nav's own collapse point) ---------- */
+  @media (max-width: 760px) {
+    #app { max-width: none; border-left: none; border-right: none; }
+    #sidebar { width: 100%; min-width: 0; border-right: none; }
+    #main { display: none; }
+    #app.chat-open #sidebar { display: none; }
+    #app.chat-open #main { display: flex; }
+    #back-btn { display: inline-flex; }
+    #messages { padding: var(--space-md) var(--space-sm); }
+    .bubble { max-width: 82%; }
+    #token-modal .box { padding: var(--space-lg); }
+  }
 </style>
 </head>
 <body>
@@ -201,13 +206,15 @@
   <div id="sidebar">
     <div id="sidebar-header">
       <h1>Realmora</h1>
-      <div id="token-status" onclick="openTokenModal()" title="This links the browser to Jarvis's API -- separate from ecosystem sign-in above">api: not linked</div>
+      <span id="token-status" class="pill pill--neutral" onclick="openTokenModal()"
+            title="This links the browser to Jarvis's API -- separate from ecosystem sign-in above"
+            style="cursor:pointer">api: not linked</span>
     </div>
     <div id="contact-list">
       <div class="contact active" onclick="selectContact('jarvis')">
         <div class="avatar">J</div>
         <div class="contact-info">
-          <div class="contact-name">Jarvis <span class="contact-tag">$~jarvis</span></div>
+          <div class="contact-name">Jarvis <span class="pill pill--neutral">$~jarvis</span></div>
           <div class="contact-preview" id="jarvis-preview">Say hello</div>
         </div>
         <div class="contact-meta"><span class="dot" id="jarvis-dot" style="display:none"></span></div>
@@ -217,6 +224,10 @@
 
   <div id="main">
     <div id="chat-header">
+      <button id="back-btn" onclick="goBack()" aria-label="Back to contacts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <div class="avatar" style="width:36px;height:36px;font-size:14px;">J</div>
       <div>
         <div class="name">Jarvis</div>
@@ -240,7 +251,7 @@
        token that authorizes this specific browser to call Jarvis. It's stored
        only in local storage and sent as a Bearer token on every message.</p>
     <input id="token-input" type="password" placeholder="API token" autocomplete="off">
-    <button onclick="saveToken()">Link</button>
+    <button class="button button--primary" onclick="saveToken()">Link</button>
   </div>
 </div>
 
@@ -262,6 +273,7 @@ const HISTORY_KEY = "realmora_history_jarvis";
 let sessionId = localStorage.getItem(SESSION_KEY) || crypto.randomUUID();
 localStorage.setItem(SESSION_KEY, sessionId);
 
+const $app = document.getElementById("app");
 const $messages = document.getElementById("messages");
 const $input = document.getElementById("input");
 const $sendBtn = document.getElementById("send-btn");
@@ -336,7 +348,8 @@ function saveToken() {
 async function refreshStatus() {
   const has = !!getToken();
   $tokenStatus.textContent = has ? "api: linked" : "api: not linked";
-  $tokenStatus.classList.toggle("connected", has);
+  $tokenStatus.classList.toggle("pill--live", has);
+  $tokenStatus.classList.toggle("pill--neutral", !has);
   $jarvisDot.style.display = has ? "inline-block" : "none";
 }
 
@@ -388,7 +401,6 @@ function updateBubble(id, patch) {
   const row = $messages.querySelector('[data-id="' + id + '"]');
   if (!row) return;
   const bubble = row.querySelector(".bubble");
-  Object.assign(patch.style ? {} : {}, {});
   if (patch.content !== undefined) {
     bubble.firstChild ? bubble.replaceChild(document.createTextNode(patch.content), bubble.firstChild)
                        : bubble.prepend(document.createTextNode(patch.content));
@@ -528,7 +540,16 @@ async function send() {
   }
 }
 
-function selectContact() { /* single contact for now */ }
+// Mobile: tapping a contact swaps the single visible pane from the contact
+// list to the conversation; #back-btn (visible only under the 760px
+// breakpoint) swaps it back. Desktop shows both panes always, so this class
+// has no visible effect there.
+function selectContact() {
+  $app.classList.add("chat-open");
+}
+function goBack() {
+  $app.classList.remove("chat-open");
+}
 
 refreshStatus();
 renderAll();
