@@ -30,8 +30,12 @@
   * { box-sizing: border-box; }
   html { height: 100%; }
   body {
-    height: 100vh;   /* fallback for browsers without dvh */
-    height: 100dvh;  /* tracks the real visible viewport as mobile browser chrome shows/hides */
+    height: 100vh;                 /* fallback: no dvh, no JS yet */
+    height: 100dvh;                /* tracks browser chrome (address bar) show/hide */
+    height: var(--app-vh, 100dvh); /* tracks the on-screen keyboard too, once JS below has run --
+                                       dvh alone does NOT shrink for the keyboard on most mobile
+                                       browsers, which is exactly what left the composer hidden
+                                       behind it. See the visualViewport script near the end of body. */
     overflow: hidden;
     display: flex; flex-direction: column;
     font-size: var(--font-size-base);
@@ -278,6 +282,26 @@ const TOKEN_KEY = "realmora_token";                 // legacy per-origin localSt
 const SHARED_TOKEN_KEY = "realmora.api_token";      // HarithStore key, namespaced app-prefixed
 const HISTORY_KEY = "realmora_history_jarvis";
 
+// Keep --app-vh pinned to the ACTUAL visible height, including the on-screen
+// keyboard. CSS dvh/svh/lvh units only react to browser chrome (the address
+// bar) showing or hiding -- none of them shrink for a mobile keyboard, so a
+// composer positioned purely with dvh can end up rendered correctly but
+// sitting behind the keyboard the moment the input is focused. visualViewport
+// is the one thing that actually reports the keyboard-reduced height.
+function syncViewportHeight() {
+  var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+  document.documentElement.style.setProperty("--app-vh", h + "px");
+}
+syncViewportHeight();
+window.addEventListener("resize", syncViewportHeight);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", syncViewportHeight);
+  window.visualViewport.addEventListener("scroll", syncViewportHeight);
+}
+// Re-check after the shared header finishes hydrating -- its real rendered
+// height (which #app's flex:1 sizing depends on) isn't final until then.
+window.addEventListener("load", function () { setTimeout(syncViewportHeight, 300); });
+
 let sessionId = localStorage.getItem(SESSION_KEY) || crypto.randomUUID();
 localStorage.setItem(SESSION_KEY, sessionId);
 
@@ -428,6 +452,16 @@ function onKeyDown(e) {
     send();
   }
 }
+
+// Defensive backup for the visualViewport handling above: some browser/OS
+// combinations animate the keyboard in over ~200-300ms, during which the
+// viewport-height math can be briefly stale. Explicitly asking the browser
+// to keep the focused input in view rides out that window regardless.
+$input.addEventListener("focus", function () {
+  setTimeout(function () {
+    $input.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, 300);
+});
 
 // Reads an OpenAI-style SSE stream (data: {...}\n\n lines, terminated by
 // "data: [DONE]") and grows the given bubble's text as each delta arrives,
