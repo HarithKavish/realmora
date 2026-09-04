@@ -30,12 +30,21 @@
   * { box-sizing: border-box; }
   html { height: 100%; }
   body {
+    /* base.css sets body { min-height: 100vh } for its own scrolling
+       marketing pages -- reasonable there, wrong here. On Android, 100vh
+       resolves to the LARGE viewport (address bar hidden), taller than the
+       actually-visible area, and min-height always wins over a smaller
+       height. Confirmed on a real device: body rendered 56px taller than
+       the true viewport, silently clipped by overflow:hidden below, which
+       pushed the composer (the last flex child) below the visible edge.
+       min-height and height don't cascade against each other the normal
+       way -- this has to be an explicit override, not just ordering. */
+    min-height: 0;
     height: 100vh;                 /* fallback: no dvh, no JS yet */
     height: 100dvh;                /* tracks browser chrome (address bar) show/hide */
     height: var(--app-vh, 100dvh); /* tracks the on-screen keyboard too, once JS below has run --
                                        dvh alone does NOT shrink for the keyboard on most mobile
-                                       browsers, which is exactly what left the composer hidden
-                                       behind it. See the visualViewport script near the end of body. */
+                                       browsers. See the visualViewport script near the end of body. */
     overflow: hidden;
     display: flex; flex-direction: column;
     font-size: var(--font-size-base);
