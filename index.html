@@ -80,8 +80,15 @@
   .dot { width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--dot-online); display: inline-block; }
 
   /* ---------- right panel ---------- */
-  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  /* min-height: 0 is the fix, not a nicety: #main is itself a flex item (of
+     #app), and a flex item's default min-height is auto -- meaning it will
+     NOT shrink below its content's natural height. Without this, #main (and
+     its #messages child) can grow past the viewport instead of being capped
+     at the space #app actually has, pushing #composer below the visible
+     area. Same reasoning as #app's own min-height: 0. */
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   #chat-header {
+    flex-shrink: 0; /* never compressed to make room -- only #messages should absorb size pressure */
     padding: var(--space-sm) var(--space-lg); display: flex; align-items: center; gap: var(--space-sm);
     border-bottom: var(--border-hairline) solid var(--border);
   }
@@ -126,6 +133,7 @@
   }
 
   #composer {
+    flex-shrink: 0; /* the exact element this whole fix is for -- must never be squeezed off */
     display: flex; align-items: flex-end; gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md); border-top: var(--border-hairline) solid var(--border);
     padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
