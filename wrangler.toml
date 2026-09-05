@@ -8,7 +8,7 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "realmora"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "cacd6727-c404-4220-adaa-fb44c0a7b3fd"
 
 # Secrets (never in this file -- set with `npx wrangler pages secret put <NAME>`):
 #   OAUTH_SECRET_REALMORA      -- must match account.harithkavish.com's client secret
