@@ -65,11 +65,20 @@
     display: flex; flex-direction: column;
   }
   #sidebar-header {
-    padding: var(--space-md); display: flex; align-items: center; justify-content: space-between;
+    padding: var(--space-md); display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs);
     border-bottom: var(--border-hairline) solid var(--border);
   }
   #sidebar-header h1 { margin: 0; font-size: var(--font-size-lg); font-weight: var(--font-weight-heading); }
+  #sidebar-header-actions { display: flex; align-items: center; gap: var(--space-2xs); }
+  #new-agent-btn {
+    width: 2rem; height: 2rem; border-radius: var(--radius-pill); border: none;
+    background: var(--surface-hover); color: var(--text); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  #new-agent-btn:hover { background: var(--surface-soft); }
+  #new-agent-btn svg { width: 1.1rem; height: 1.1rem; }
   #contact-list { flex: 1; overflow-y: auto; }
+  .contact-add-row { padding: var(--space-sm) var(--space-md); }
   .contact {
     display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md);
     cursor: pointer; border-bottom: var(--border-hairline) solid var(--border);
@@ -206,6 +215,46 @@
   }
   #token-modal .button { width: 100%; }
 
+  /* agent + providers modals -- same shape as #token-modal, generalized */
+  .rm-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: none; align-items: center; justify-content: center; z-index: var(--z-modal);
+    padding: var(--space-md);
+  }
+  .rm-modal.open { display: flex; }
+  .rm-modal .box {
+    background: var(--surface-strong); padding: var(--space-xl); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-strong); width: 420px; max-width: 100%;
+    border: var(--border-hairline) solid var(--border);
+    max-height: 85vh; overflow-y: auto;
+  }
+  .rm-modal h2 { margin: 0 0 var(--space-xs); font-size: var(--font-size-lg); }
+  .rm-modal p { font-size: var(--font-size-sm); color: var(--muted); margin: 0 0 var(--space-md); line-height: var(--line-height-body); }
+  .rm-modal label { display: block; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); margin: var(--space-md) 0 var(--space-2xs); }
+  .rm-modal input, .rm-modal textarea {
+    width: 100%; padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm);
+    border: var(--border-hairline) solid var(--border); background: var(--surface);
+    color: var(--text); font-size: 16px; font: inherit;
+  }
+  .rm-modal textarea { resize: vertical; min-height: 80px; }
+  .rm-modal input:focus-visible, .rm-modal textarea:focus-visible {
+    outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); border-color: var(--border-focus);
+  }
+  .rm-modal .checkbox-row { display: flex; align-items: center; gap: var(--space-xs); margin-top: var(--space-md); }
+  .rm-modal .checkbox-row input { width: auto; }
+  .rm-modal .checkbox-row label { margin: 0; }
+  .rm-modal .actions { display: flex; gap: var(--space-sm); margin-top: var(--space-lg); }
+  .rm-modal .actions .button { flex: 1; }
+  .provider-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: var(--space-sm) 0; border-bottom: var(--border-hairline) solid var(--border); }
+  .provider-row:last-of-type { border-bottom: none; }
+  .provider-row .provider-name { font-weight: var(--font-weight-medium); }
+  .provider-row .provider-fields { flex: 1; display: none; margin-top: var(--space-xs); }
+  .provider-row.editing .provider-fields { display: block; }
+  #close-agent-modal, #close-providers-modal {
+    background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: var(--font-size-sm);
+    padding: var(--space-2xs) 0; margin-top: var(--space-sm); width: 100%; text-align: center;
+  }
+
   /* ---------- mobile: single pane + back button, at the ecosystem's own
      760px breakpoint (matches the shared nav's own collapse point) ---------- */
   @media (max-width: 760px) {
@@ -227,12 +276,18 @@
   <div id="sidebar">
     <div id="sidebar-header">
       <h1>Realmora</h1>
-      <span id="token-status" class="pill pill--neutral" onclick="openTokenModal()"
-            title="This links the browser to Jarvis's API -- separate from ecosystem sign-in above"
-            style="cursor:pointer">api: not linked</span>
+      <div id="sidebar-header-actions">
+        <span id="signin-status" class="pill pill--neutral" onclick="onSigninPillClick()" style="cursor:pointer">sign in</span>
+        <button id="new-agent-btn" onclick="openAgentModal()" title="Design a new agent" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <span id="token-status" class="pill pill--neutral" onclick="openTokenModal()"
+              title="This links the browser to Jarvis's API -- separate from ecosystem sign-in above"
+              style="cursor:pointer">api: not linked</span>
+      </div>
     </div>
     <div id="contact-list">
-      <div class="contact active" onclick="selectContact('jarvis')">
+      <div class="contact active" data-contact-id="jarvis" onclick="selectContact('jarvis')">
         <div class="avatar">J</div>
         <div class="contact-info">
           <div class="contact-name">Jarvis <span class="pill pill--neutral">$~jarvis</span></div>
@@ -240,6 +295,7 @@
         </div>
         <div class="contact-meta"><span class="dot" id="jarvis-dot" style="display:none"></span></div>
       </div>
+      <div id="agent-contacts"></div>
     </div>
   </div>
 
@@ -249,15 +305,15 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <div class="avatar" style="width:36px;height:36px;font-size:14px;">J</div>
+      <div class="avatar" id="chat-avatar" style="width:36px;height:36px;font-size:14px;">J</div>
       <div>
-        <div class="name">Jarvis</div>
+        <div class="name" id="chat-name">Jarvis</div>
         <div class="status" id="chat-status">$~jarvis</div>
       </div>
     </div>
     <div id="messages"></div>
     <div id="composer">
-      <textarea id="input" placeholder="Message Jarvis" rows="1" onkeydown="onKeyDown(event)" oninput="autoGrow(this)"></textarea>
+      <textarea id="input" placeholder="Message" rows="1" onkeydown="onKeyDown(event)" oninput="autoGrow(this)"></textarea>
       <button id="send-btn" onclick="send()" aria-label="Send">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
       </button>
@@ -273,6 +329,71 @@
        only in local storage and sent as a Bearer token on every message.</p>
     <input id="token-input" type="password" placeholder="API token" autocomplete="off">
     <button class="button button--primary" onclick="saveToken()">Link</button>
+  </div>
+</div>
+
+<div id="agent-modal" class="rm-modal">
+  <div class="box">
+    <h2>Design an agent</h2>
+    <p>A name and a system prompt -- that's the whole agent. It replies using
+       whichever provider you've connected below, with your own key.</p>
+    <label for="agent-name-input">Name</label>
+    <input id="agent-name-input" type="text" placeholder="e.g. Study Buddy" autocomplete="off">
+    <label for="agent-prompt-input">System prompt</label>
+    <textarea id="agent-prompt-input" placeholder="You are a patient tutor who..."></textarea>
+    <div class="checkbox-row">
+      <input id="agent-memory-input" type="checkbox">
+      <label for="agent-memory-input">Remember past conversations (needs Atlas connected below)</label>
+    </div>
+    <div class="actions">
+      <button class="button" onclick="closeModal('agent-modal')">Cancel</button>
+      <button class="button button--primary" onclick="createAgent()">Create</button>
+    </div>
+    <button id="close-agent-modal" onclick="openProvidersModal()">Connect a provider instead &rarr;</button>
+  </div>
+</div>
+
+<div id="providers-modal" class="rm-modal">
+  <div class="box">
+    <h2>Connect providers</h2>
+    <p>Each key is yours -- stored encrypted, used only to run your own agents.
+       NVIDIA and Groq both give free API keys on signup; either one is enough
+       to chat. Atlas is optional, only needed for an agent's memory.</p>
+
+    <div class="provider-row" id="row-groq">
+      <span class="provider-name">Groq <span class="pill pill--neutral" id="status-groq">not connected</span></span>
+      <button class="button" onclick="toggleProviderFields('groq')">Add key</button>
+    </div>
+    <div class="provider-fields" id="fields-groq">
+      <input id="groq-key-input" type="password" placeholder="Groq API key" autocomplete="off">
+      <div class="actions"><button class="button button--primary" onclick="saveProviderKey('groq')">Save</button></div>
+    </div>
+
+    <div class="provider-row" id="row-nvidia">
+      <span class="provider-name">NVIDIA NIM <span class="pill pill--neutral" id="status-nvidia">not connected</span></span>
+      <button class="button" onclick="toggleProviderFields('nvidia')">Add key</button>
+    </div>
+    <div class="provider-fields" id="fields-nvidia">
+      <input id="nvidia-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off">
+      <div class="actions"><button class="button button--primary" onclick="saveProviderKey('nvidia')">Save</button></div>
+    </div>
+
+    <div class="provider-row" id="row-atlas">
+      <span class="provider-name">MongoDB Atlas <span class="pill pill--neutral" id="status-atlas">not connected</span></span>
+      <button class="button" onclick="toggleProviderFields('atlas')">Add account</button>
+    </div>
+    <div class="provider-fields" id="fields-atlas">
+      <label for="atlas-project-input">Project ID</label>
+      <input id="atlas-project-input" type="text" placeholder="Atlas project (group) id" autocomplete="off">
+      <label for="atlas-client-input">Service Account client ID</label>
+      <input id="atlas-client-input" type="text" autocomplete="off">
+      <label for="atlas-secret-input">Service Account client secret</label>
+      <input id="atlas-secret-input" type="password" autocomplete="off">
+      <div class="actions"><button class="button button--primary" onclick="saveProviderKey('atlas')">Save</button></div>
+      <p id="atlas-provision-status" style="margin-top: var(--space-sm);"></p>
+    </div>
+
+    <button id="close-providers-modal" onclick="closeModal('providers-modal')">Close</button>
   </div>
 </div>
 
@@ -321,6 +442,20 @@ const $sendBtn = document.getElementById("send-btn");
 const $tokenStatus = document.getElementById("token-status");
 const $jarvisDot = document.getElementById("jarvis-dot");
 const $jarvisPreview = document.getElementById("jarvis-preview");
+const $signinStatus = document.getElementById("signin-status");
+const $newAgentBtn = document.getElementById("new-agent-btn");
+const $agentContacts = document.getElementById("agent-contacts");
+const $chatAvatar = document.getElementById("chat-avatar");
+const $chatName = document.getElementById("chat-name");
+const $chatStatus = document.getElementById("chat-status");
+
+// Realmora's own account state -- entirely separate from the Jarvis API
+// token above. `currentUser` is set from GET /api/auth/me; `agents` is
+// this user's own designed agents, each { id, name, systemPrompt,
+// memoryEnabled }; `currentContactId` is "jarvis" or an agent id.
+let currentUser = null;
+let agents = [];
+let currentContactId = "jarvis";
 
 // Storage for the API token: HarithStore is preferred (cookie-scoped to
 // .harithkavish.com, survives more than raw localStorage, and consistent
@@ -394,30 +529,50 @@ async function refreshStatus() {
   $jarvisDot.style.display = has ? "inline-block" : "none";
 }
 
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+// Each contact (Jarvis, or one of this user's own agents) keeps its own
+// history under its own localStorage key -- HISTORY_KEY was Jarvis-only
+// before agents existed, so its exact key is kept unchanged for Jarvis
+// specifically rather than migrated, so nobody's existing Jarvis history
+// silently vanishes under a new key.
+function historyKeyFor(contactId) {
+  return contactId === "jarvis" ? HISTORY_KEY : "realmora_history_agent_" + contactId;
+}
+function loadHistory(contactId) {
+  try { return JSON.parse(localStorage.getItem(historyKeyFor(contactId)) || "[]"); }
   catch { return []; }
 }
-function saveHistory(msgs) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(msgs.slice(-200)));
+function saveHistory(contactId, msgs) {
+  localStorage.setItem(historyKeyFor(contactId), JSON.stringify(msgs.slice(-200)));
 }
 
-let history = loadHistory();
+let history = loadHistory(currentContactId);
 
 function fmtTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function contactName(contactId) {
+  if (contactId === "jarvis") return "Jarvis";
+  const agent = agents.find((a) => a.id === contactId);
+  return agent ? agent.name : "Agent";
+}
+
+function updatePreview(contactId, text) {
+  if (contactId === "jarvis") { $jarvisPreview.textContent = text; return; }
+  const el = document.getElementById("preview-" + contactId);
+  if (el) el.textContent = text;
+}
+
 function renderAll() {
   $messages.innerHTML = "";
   if (!history.length) {
-    $messages.innerHTML = '<div id="empty-state"><div>No messages yet</div><div>Say hello to Jarvis</div></div>';
+    $messages.innerHTML = '<div id="empty-state"><div>No messages yet</div><div>Say hello to ' + contactName(currentContactId) + '</div></div>';
     return;
   }
   for (const m of history) appendBubble(m, false);
   $messages.scrollTop = $messages.scrollHeight;
   const last = history[history.length - 1];
-  if (last) $jarvisPreview.textContent = (last.role === "user" ? "You: " : "") + last.content.slice(0, 40);
+  if (last) updatePreview(currentContactId, (last.role === "user" ? "You: " : "") + last.content.slice(0, 40));
 }
 
 function appendBubble(m, scroll = true) {
@@ -516,75 +671,98 @@ async function streamReply(res, bubbleId) {
   return accumulated;
 }
 
+// Jarvis keeps its own bearer-token auth (separate product, its own API).
+// An agent chat is same-origin and uses the Realmora session cookie
+// instead -- no token, no X-Hermes-Session-Id, and it needs the whole
+// conversation (Jarvis's gateway keeps server-side session state; Realmora's
+// /api/chat is stateless per request, just system prompt + messages).
+function sendToJarvis(text) {
+  return fetch(API_BASE + "/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + getToken(),
+      "X-Hermes-Session-Id": sessionId,
+    },
+    body: JSON.stringify({ model: "chat", messages: [{ role: "user", content: text }], stream: true }),
+  });
+}
+
+function sendToAgent(agentId, priorHistory) {
+  const messages = priorHistory
+    .filter((m) => !m.pending)
+    .map((m) => ({ role: m.role, content: m.content }));
+  return fetch("/api/chat", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ agentId, messages }),
+  });
+}
+
 async function send() {
   const text = $input.value.trim();
   if (!text) return;
-  if (!getToken()) { openTokenModal(); return; }
+
+  const isJarvis = currentContactId === "jarvis";
+  if (isJarvis && !getToken()) { openTokenModal(); return; }
+  if (!isJarvis && !currentUser) { onSigninPillClick(); return; }
 
   $input.value = "";
   autoGrow($input);
   $sendBtn.disabled = true;
 
   const userMsg = { id: crypto.randomUUID(), role: "user", content: text, ts: Date.now() };
+  const priorHistory = history.slice();
   history.push(userMsg);
   appendBubble(userMsg);
-  saveHistory(history);
+  saveHistory(currentContactId, history);
 
   const pendingId = crypto.randomUUID();
   const pendingMsg = { id: pendingId, role: "assistant", content: "…", ts: Date.now(), pending: true };
   history.push(pendingMsg);
   appendBubble(pendingMsg);
 
+  const contactId = currentContactId; // frozen for this send -- guards against a mid-flight contact switch
+  const fail = (msg) => {
+    updateBubble(pendingId, { content: msg, error: true, pending: false });
+    history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
+    saveHistory(contactId, history);
+  };
+
   try {
-    const res = await fetch(API_BASE + "/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + getToken(),
-        "X-Hermes-Session-Id": sessionId,
-      },
-      body: JSON.stringify({
-        model: "chat",
-        messages: [{ role: "user", content: text }],
-        stream: true,
-      }),
-    });
+    const res = isJarvis ? await sendToJarvis(text) : await sendToAgent(contactId, priorHistory.concat(userMsg));
 
     if (res.status === 401) {
-      const invalidMsg = "API token invalid or revoked. Click \"api: not linked\" to re-link.";
-      updateBubble(pendingId, { content: invalidMsg, error: true, pending: false });
-      history[history.length - 1] = { id: pendingId, role: "assistant", content: invalidMsg, ts: Date.now(), error: true };
-      clearToken();
-      refreshStatus();
-      saveHistory(history);
+      if (isJarvis) {
+        fail("API token invalid or revoked. Click \"api: not linked\" to re-link.");
+        clearToken();
+        refreshStatus();
+      } else {
+        fail("Signed out. Click \"sign in\" and try again.");
+        currentUser = null;
+        renderSigninState();
+      }
       return;
     }
     if (res.status === 429) {
       const body = await res.json().catch(() => ({}));
-      const msg = "Rate limited: " + (body.error && body.error.message || "try again shortly");
-      updateBubble(pendingId, { content: msg, error: true, pending: false });
-      history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
-      saveHistory(history);
+      fail("Rate limited: " + (body.error && body.error.message || "try again shortly"));
       return;
     }
     if (!res.ok) {
-      const msg = "Error " + res.status + " reaching Jarvis.";
-      updateBubble(pendingId, { content: msg, error: true, pending: false });
-      history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
-      saveHistory(history);
+      const body = await res.json().catch(() => ({}));
+      fail((body && body.error) || ("Error " + res.status + (isJarvis ? " reaching Jarvis." : " running this agent.")));
       return;
     }
 
     const reply = await streamReply(res, pendingId);
     updateBubble(pendingId, { content: reply || "(empty reply)", pending: false });
     history[history.length - 1] = { id: pendingId, role: "assistant", content: reply || "(empty reply)", ts: Date.now() };
-    saveHistory(history);
-    $jarvisPreview.textContent = (reply || "(empty reply)").slice(0, 40);
+    saveHistory(contactId, history);
+    updatePreview(contactId, (reply || "(empty reply)").slice(0, 40));
   } catch (err) {
-    const msg = "Network error: " + err.message;
-    updateBubble(pendingId, { content: msg, error: true, pending: false });
-    history[history.length - 1] = { id: pendingId, role: "assistant", content: msg, ts: Date.now(), error: true };
-    saveHistory(history);
+    fail("Network error: " + err.message);
   } finally {
     $sendBtn.disabled = false;
     $input.focus();
@@ -595,15 +773,229 @@ async function send() {
 // list to the conversation; #back-btn (visible only under the 760px
 // breakpoint) swaps it back. Desktop shows both panes always, so this class
 // has no visible effect there.
-function selectContact() {
+function selectContact(contactId) {
+  currentContactId = contactId;
+  history = loadHistory(contactId);
+
+  document.querySelectorAll(".contact").forEach((el) => el.classList.toggle("active", el.dataset.contactId === contactId));
+
+  if (contactId === "jarvis") {
+    $chatAvatar.textContent = "J";
+    $chatName.textContent = "Jarvis";
+    $chatStatus.textContent = "$~jarvis";
+    $input.placeholder = "Message Jarvis";
+  } else {
+    const agent = agents.find((a) => a.id === contactId);
+    const name = agent ? agent.name : "Agent";
+    $chatAvatar.textContent = name.charAt(0).toUpperCase();
+    $chatName.textContent = name;
+    $chatStatus.textContent = agent && agent.memoryEnabled ? "remembers past chats" : "no memory";
+    $input.placeholder = "Message " + name;
+  }
+
+  renderAll();
   $app.classList.add("chat-open");
 }
 function goBack() {
   $app.classList.remove("chat-open");
 }
 
+// ---------- Realmora sign-in (separate from the Jarvis token above) ----------
+
+async function refreshSigninState() {
+  try {
+    const res = await fetch("/api/auth/me", { credentials: "include" });
+    const data = await res.json();
+    currentUser = data.signedIn ? data.user : null;
+  } catch (e) {
+    currentUser = null;
+  }
+  renderSigninState();
+}
+
+function renderSigninState() {
+  if (currentUser) {
+    $signinStatus.textContent = currentUser.username || currentUser.name;
+    $signinStatus.classList.add("pill--live");
+    $signinStatus.classList.remove("pill--neutral");
+    $signinStatus.title = "Signed in as " + currentUser.name + " -- click to sign out";
+    $newAgentBtn.style.display = "flex";
+    loadAgents();
+  } else {
+    $signinStatus.textContent = "sign in";
+    $signinStatus.classList.remove("pill--live");
+    $signinStatus.classList.add("pill--neutral");
+    $signinStatus.title = "";
+    $newAgentBtn.style.display = "none";
+    agents = [];
+    renderAgentContacts();
+  }
+}
+
+function onSigninPillClick() {
+  if (currentUser) {
+    if (!confirm("Sign out of Realmora?")) return;
+    fetch("/api/auth/logout", { method: "POST", credentials: "include" }).finally(() => {
+      currentUser = null;
+      if (currentContactId !== "jarvis") selectContact("jarvis");
+      renderSigninState();
+    });
+  } else {
+    location.href = "/api/auth/login";
+  }
+}
+
+// ---------- Agents ----------
+
+async function loadAgents() {
+  try {
+    const res = await fetch("/api/agents", { credentials: "include" });
+    if (!res.ok) return;
+    const data = await res.json();
+    agents = data.agents || [];
+  } catch (e) {
+    agents = [];
+  }
+  renderAgentContacts();
+}
+
+function renderAgentContacts() {
+  $agentContacts.innerHTML = "";
+  for (const agent of agents) {
+    const row = document.createElement("div");
+    row.className = "contact" + (agent.id === currentContactId ? " active" : "");
+    row.dataset.contactId = agent.id;
+    row.onclick = () => selectContact(agent.id);
+    row.innerHTML =
+      '<div class="avatar">' + agent.name.charAt(0).toUpperCase() + '</div>' +
+      '<div class="contact-info">' +
+        '<div class="contact-name">' + agent.name + (agent.memoryEnabled ? ' <span class="pill pill--neutral">memory</span>' : '') + '</div>' +
+        '<div class="contact-preview" id="preview-' + agent.id + '">Say hello</div>' +
+      '</div>';
+    $agentContacts.appendChild(row);
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+function openAgentModal() {
+  if (!currentUser) { onSigninPillClick(); return; }
+  document.getElementById("agent-name-input").value = "";
+  document.getElementById("agent-prompt-input").value = "";
+  document.getElementById("agent-memory-input").checked = false;
+  document.getElementById("agent-modal").classList.add("open");
+}
+
+async function createAgent() {
+  const name = document.getElementById("agent-name-input").value.trim();
+  const systemPrompt = document.getElementById("agent-prompt-input").value.trim();
+  const memoryEnabled = document.getElementById("agent-memory-input").checked;
+  if (!name || !systemPrompt) return;
+
+  try {
+    const res = await fetch("/api/agents", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, systemPrompt, memoryEnabled }),
+    });
+    if (!res.ok) { alert("Could not create the agent."); return; }
+    const created = await res.json();
+    agents.push(created);
+    renderAgentContacts();
+    closeModal("agent-modal");
+    selectContact(created.id);
+  } catch (e) {
+    alert("Network error creating the agent.");
+  }
+}
+
+// ---------- Providers (NVIDIA / Groq / Atlas) ----------
+
+function toggleProviderFields(provider) {
+  document.getElementById("row-" + provider).classList.toggle("editing");
+}
+
+async function refreshProviderStatus() {
+  try {
+    const res = await fetch("/api/credentials", { credentials: "include" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const connected = new Set((data.connected || []).map((c) => c.provider));
+    for (const provider of ["groq", "nvidia", "atlas"]) {
+      const pill = document.getElementById("status-" + provider);
+      pill.textContent = connected.has(provider) ? "connected" : "not connected";
+      pill.classList.toggle("pill--live", connected.has(provider));
+      pill.classList.toggle("pill--neutral", !connected.has(provider));
+    }
+  } catch (e) { /* leave pills at their last-known state */ }
+}
+
+function openProvidersModal() {
+  if (!currentUser) { onSigninPillClick(); return; }
+  closeModal("agent-modal");
+  refreshProviderStatus();
+  document.getElementById("providers-modal").classList.add("open");
+}
+
+async function saveProviderKey(provider) {
+  let body;
+  if (provider === "atlas") {
+    body = {
+      provider: "atlas",
+      projectId: document.getElementById("atlas-project-input").value.trim(),
+      clientId: document.getElementById("atlas-client-input").value.trim(),
+      clientSecret: document.getElementById("atlas-secret-input").value.trim(),
+    };
+  } else {
+    body = { provider, apiKey: document.getElementById(provider + "-key-input").value.trim() };
+  }
+
+  try {
+    const res = await fetch("/api/credentials", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) { alert("Could not save that credential."); return; }
+    document.getElementById("row-" + provider).classList.remove("editing");
+    refreshProviderStatus();
+    if (provider === "atlas") pollAtlasProvisioning();
+  } catch (e) {
+    alert("Network error saving that credential.");
+  }
+}
+
+// Cluster creation genuinely takes minutes -- this polls /api/atlas/provision,
+// which advances one step per call, until it reports ready or this gives up.
+async function pollAtlasProvisioning(attemptsLeft) {
+  if (attemptsLeft === undefined) attemptsLeft = 40; // ~4-5 minutes at 6-8s each
+  const $status = document.getElementById("atlas-provision-status");
+  try {
+    const res = await fetch("/api/atlas/provision", { method: "POST", credentials: "include" });
+    const data = await res.json();
+    if (data.status === "ready") {
+      $status.textContent = "Memory is ready.";
+      return;
+    }
+    if (data.status === "not_connected") {
+      $status.textContent = data.detail || "Atlas is not fully connected yet.";
+      return;
+    }
+    $status.textContent = "Setting up memory" + (data.detail ? " (" + data.detail + ")" : "") + "...";
+    if (attemptsLeft > 0) setTimeout(() => pollAtlasProvisioning(attemptsLeft - 1), 7000);
+    else $status.textContent = "Still creating -- this can take a few minutes; reopen this later to check.";
+  } catch (e) {
+    $status.textContent = "Could not check provisioning status.";
+  }
+}
+
 refreshStatus();
 renderAll();
+refreshSigninState();
 if (!getToken()) setTimeout(openTokenModal, 300);
 
 // Temporary on-page diagnostic for the mobile composer report -- shows the
