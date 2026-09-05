@@ -31,16 +31,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
  * Save a credential.
  *
  * `nvidia` / `groq`: { provider, apiKey }.
- * `atlas`: { provider: "atlas", clientId, clientSecret } -- an Atlas Service
- * Account pair (OAuth2 client-credentials), not a bare API key. `clientId`
- * is stored in the clear (it identifies the service account, not a secret
- * on its own); `clientSecret` is what gets encrypted.
+ * `atlas`: { provider: "atlas", clientId, clientSecret, projectId } -- an
+ * Atlas Service Account pair (OAuth2 client-credentials) plus the id of the
+ * project the friend already granted it access to. `clientId` and
+ * `projectId` are stored in the clear (neither is a secret on its own);
+ * `clientSecret` is what gets encrypted.
  */
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const user = await getSessionUser(env, request);
   if (!user) return unauthorized();
 
-  const body = await request.json<{ provider?: string; apiKey?: string; clientId?: string; clientSecret?: string }>().catch(() => null);
+  const body = await request
+    .json<{ provider?: string; apiKey?: string; clientId?: string; clientSecret?: string; projectId?: string }>()
+    .catch(() => null);
   if (!body || !body.provider || !PROVIDERS.has(body.provider)) {
     return new Response(JSON.stringify({ error: "invalid provider" }), { status: 400, headers: { "content-type": "application/json" } });
   }
@@ -49,21 +52,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!secret || !secret.trim()) {
     return new Response(JSON.stringify({ error: "missing secret" }), { status: 400, headers: { "content-type": "application/json" } });
   }
-  if (body.provider === "atlas" && !body.clientId?.trim()) {
-    return new Response(JSON.stringify({ error: "missing clientId" }), { status: 400, headers: { "content-type": "application/json" } });
+  if (body.provider === "atlas" && (!body.clientId?.trim() || !body.projectId?.trim())) {
+    return new Response(JSON.stringify({ error: "missing clientId or projectId" }), { status: 400, headers: { "content-type": "application/json" } });
   }
 
   const { ciphertext, iv } = await encryptSecret(secret.trim(), env.CREDENTIALS_ENCRYPTION_KEY);
+  const metadata = body.provider === "atlas" ? JSON.stringify({ projectId: body.projectId!.trim() }) : null;
   const now = Date.now();
 
   await env.DB.prepare(
-    `INSERT INTO credentials (user_id, provider, ciphertext, iv, client_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO credentials (user_id, provider, ciphertext, iv, client_id, metadata, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, provider) DO UPDATE SET
        ciphertext = excluded.ciphertext, iv = excluded.iv,
-       client_id = excluded.client_id, updated_at = excluded.updated_at`,
+       client_id = excluded.client_id, metadata = excluded.metadata, updated_at = excluded.updated_at`,
   )
-    .bind(user.id, body.provider, ciphertext, iv, body.provider === "atlas" ? body.clientId!.trim() : null, now, now)
+    .bind(user.id, body.provider, ciphertext, iv, body.provider === "atlas" ? body.clientId!.trim() : null, metadata, now, now)
     .run();
 
   return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
