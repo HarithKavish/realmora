@@ -1,0 +1,15 @@
+name = "realmora"
+compatibility_date = "2026-08-01"
+pages_build_output_dir = "."
+
+# Created with: npx wrangler d1 create realmora
+# Then paste the returned database_id below and run:
+#   npx wrangler d1 migrations apply realmora --remote
+[[d1_databases]]
+binding = "DB"
+database_name = "realmora"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Secrets (never in this file -- set with `npx wrangler pages secret put <NAME>`):
+#   OAUTH_SECRET_REALMORA      -- must match account.harithkavish.com's client secret
+#   CREDENTIALS_ENCRYPTION_KEY -- 32 random bytes, base64 (openssl rand -base64 32)
