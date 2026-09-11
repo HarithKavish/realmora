@@ -28,6 +28,18 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
+  if (url.searchParams.get("error")) {
+    // login_required is prompt=none's own, expected way of saying "not signed
+    // in" -- a silent probe never shows this to anyone, it just lands back
+    // where it started, still signed out. A non-silent attempt never sends
+    // prompt=none, so in practice this is the only error code that reaches
+    // here, and it is never a failure worth a page for.
+    return new Response(null, {
+      status: 302,
+      headers: [["Location", "/"], ...clearTempCookies.map((c) => ["Set-Cookie", c] as const)],
+    });
+  }
+
   const expectedState = readCookie(request, "rm_oauth_state");
   const verifier = readCookie(request, "rm_oauth_verifier");
 
