@@ -1,36 +1,32 @@
 name: Deploy Pages
 
-# Publication happens here, in the repository -- not in a platform setting
-# (standards/DEPLOYMENT.md). The Pages build type is workflow; switching it
-# back to a branch source silently returns this repository to deploying by
-# setting, which the standard does not permit.
+# Deploy to Cloudflare Pages on pushes to development and main
+# Uses wrangler pages deploy via cloudflare/wrangler-action
+# Requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository secrets
 
 on:
   push:
-    branches: [development]
+    branches: [development, main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# One deployment at a time, and never cancel one part-way through.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+
+      - uses: cloudflare/wrangler-action@v3
         with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=realmora
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
