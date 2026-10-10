@@ -1,0 +1,29 @@
+name: Deploy Pages
+
+# Deploy to Cloudflare Pages on pushes to development and main
+# Uses wrangler pages deploy via cloudflare/wrangler-action
+# Requires CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository secrets
+
+on:
+  push:
+    branches: [development, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=realmora --branch ${{ github.ref_name }}
