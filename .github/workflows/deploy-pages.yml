@@ -1,0 +1,36 @@
+name: Deploy Pages
+
+# Publication happens here, in the repository -- not in a platform setting
+# (standards/DEPLOYMENT.md). The Pages build type is workflow; switching it
+# back to a branch source silently returns this repository to deploying by
+# setting, which the standard does not permit.
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one part-way through.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
